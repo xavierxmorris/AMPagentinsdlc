@@ -28,6 +28,20 @@ Tailspin Toys is a fictional crowdfunding platform for board games with a DevOps
 | Frontend | [Astro](https://astro.build/) · [Svelte](https://svelte.dev/) · [Tailwind CSS](https://tailwindcss.com/) · TypeScript |
 | Testing  | `unittest` (backend) · [Playwright](https://playwright.dev/) (end-to-end) |
 
+## Architecture
+
+```mermaid
+graph TD
+    Browser["🌐 Browser\n(localhost:4321)"]
+    Astro["Astro / Svelte Frontend\n(client/)"]
+    Flask["Flask REST API\n(localhost:5100)"]
+    SQLite[("SQLite Database\n(data/tailspin-toys.db)")]
+
+    Browser -->|HTTP| Astro
+    Astro -->|"GET /api/games\nGET /api/games/:id"| Flask
+    Flask -->|SQLAlchemy ORM| SQLite
+```
+
 ## Project Structure
 
 ```text
@@ -116,6 +130,35 @@ npm run dev
 
 The Flask backend exposes a JSON REST API. All endpoints are prefixed with `/api`.
 
+### API Request Flow
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant A as Astro Frontend
+    participant F as Flask API
+    participant D as SQLite DB
+
+    B->>A: Navigate to page
+    A->>F: GET /api/games
+    F->>D: SELECT games JOIN publishers JOIN categories
+    D-->>F: Result rows
+    F-->>A: JSON array of games
+    A-->>B: Render game list
+
+    B->>A: Click on a game
+    A->>F: GET /api/games/:id
+    F->>D: SELECT game WHERE id = :id
+    D-->>F: Single row (or none)
+    alt Game found
+        F-->>A: JSON game object
+        A-->>B: Render game detail page
+    else Not found
+        F-->>A: 404 {"error": "Game not found"}
+        A-->>B: Show error
+    end
+```
+
 ### Games
 
 | Method | Endpoint          | Description                     |
@@ -143,6 +186,31 @@ The Flask backend exposes a JSON REST API. All endpoints are prefixed with `/api
 | 404    | `{"error": "Game not found"}` | Game ID does not exist |
 
 ### Data Models
+
+```mermaid
+erDiagram
+    PUBLISHER {
+        int id PK
+        string name
+        text description
+    }
+    CATEGORY {
+        int id PK
+        string name
+        text description
+    }
+    GAME {
+        int id PK
+        string title
+        text description
+        float star_rating
+        int publisher_id FK
+        int category_id FK
+    }
+
+    PUBLISHER ||--o{ GAME : "publishes"
+    CATEGORY  ||--o{ GAME : "categorises"
+```
 
 | Model       | Fields                                                     |
 | ----------- | ---------------------------------------------------------- |
